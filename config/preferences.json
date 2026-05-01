@@ -1,0 +1,43 @@
+{
+  "default_user_id": "wechat_self",
+  "default_lottery": "dlt",
+  "default_count": 5,
+  "default_budget": 50,
+  "default_play_type": {
+    "fc3d": "single",
+    "pl3": "single",
+    "kl8": "10"
+  },
+  "default_multiple": {
+    "ssq": 1,
+    "dlt": 1,
+    "qxc": 1,
+    "qlc": 1,
+    "fc3d": 1,
+    "pl3": 1,
+    "pl5": 1,
+    "kl8": 1
+  },
+  "default_additional": {
+    "dlt": false
+  },
+  "subscriptions": {
+    "daily_push_time": "09:00",
+    "push_content": {
+      "generate_numbers": false,
+      "fetch_draw": true,
+      "check_prize": true,
+      "empty_prize_result": false,
+      "daily_report": false,
+      "weekly_report": true,
+      "monthly_report": true
+    },
+    "lotteries": {
+      "dlt": {"enabled": true, "count": 5, "play_type": "standard", "multiple": 1, "is_additional": false},
+      "ssq": {"enabled": false, "count": 5, "play_type": "standard", "multiple": 1},
+      "kl8": {"enabled": false, "count": 5, "play_type": "10", "multiple": 1}
+    }
+  },
+  "timezone": "Asia/Shanghai",
+  "language": "zh-CN"
+}

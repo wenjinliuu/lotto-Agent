@@ -1,0 +1,39 @@
+{
+  "default_source": "github_public",
+  "sources": {
+    "github_public": {
+      "enabled": true,
+      "type": "static_json",
+      "public_base_url_env": "LOTTERY_PUBLIC_DATA_BASE_URL",
+      "public_base_url": "https://raw.githubusercontent.com/wenjinliuu/lottery-data-repo/main/public_data",
+      "latest_path": "latest.json",
+      "calendar_path": "calendar.json",
+      "draws_path": "draws/{lottery_type}.json",
+      "timeout_seconds": 12
+    },
+    "jisuapi": {
+      "enabled": false,
+      "type": "api",
+      "base_url": "https://api.jisuapi.com/caipiao/query",
+      "class_url": "https://api.jisuapi.com/caipiao/class",
+      "appkey_env": "JISU_APPKEY",
+      "timeout_seconds": 12,
+      "lottery_ids": {
+        "ssq": 11,
+        "fc3d": 12,
+        "qlc": 13,
+        "dlt": 14,
+        "qxc": 15,
+        "pl3": 16,
+        "pl5": 17,
+        "kl8": 89
+      }
+    }
+  },
+  "public_export": {
+    "output_dir": "public_data",
+    "keep_recent_per_lottery": 80,
+    "by_year": true,
+    "sanitize_raw_json": true
+  }
+}

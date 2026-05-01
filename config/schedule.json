@@ -1,0 +1,12 @@
+{
+  "enabled": true,
+  "timezone": "Asia/Shanghai",
+  "jobs": [
+    {"name": "daily_generate", "action": "generate", "enabled": false, "time": "09:00", "use_user_preferences": true},
+    {"name": "draw_check_prize_window", "action": "draw_check_prize", "enabled": true, "time": "21:35", "time_end": "23:55", "lottery_type": "all", "retry_minutes": 10},
+    {"name": "fetch_draws", "action": "fetch_draw", "enabled": false, "time": "21:50", "lottery_type": "all"},
+    {"name": "check_prize", "action": "check_prize", "enabled": false, "time": "22:05"},
+    {"name": "weekly_report", "action": "report", "enabled": true, "report_type": "weekly", "weekday": "MON", "time": "09:10"},
+    {"name": "monthly_report", "action": "report", "enabled": true, "report_type": "monthly", "day": 1, "time": "09:20"}
+  ]
+}

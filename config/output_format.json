@@ -1,0 +1,29 @@
+{
+  "separator": "  ",
+  "plus_separator": " + ",
+  "wechat": {
+    "max_ticket_lines": 30,
+    "show_ticket_index": false,
+    "show_disclaimer": false,
+    "show_issue_on_generate": false,
+    "show_draw_date_on_generate": true
+  },
+  "labels": {
+    "standard": "标准",
+    "single": "单选",
+    "group3": "组三",
+    "group6": "组六"
+  },
+  "kl8_labels": {
+    "1": "选一",
+    "2": "选二",
+    "3": "选三",
+    "4": "选四",
+    "5": "选五",
+    "6": "选六",
+    "7": "选七",
+    "8": "选八",
+    "9": "选九",
+    "10": "选十"
+  }
+}

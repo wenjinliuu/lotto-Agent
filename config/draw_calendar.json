@@ -1,0 +1,67 @@
+{
+  "timezone": "Asia/Shanghai",
+  "policy": {
+    "source_priority": ["api_next", "local_calendar", "weekly_fallback"],
+    "fallback_only_when_calendar_missing": true,
+    "adjust_non_draw_date_to_next_draw": true
+  },
+  "default_weekly_schedule": {
+    "ssq": {
+      "name": "双色球",
+      "draw_weekdays": [2, 4, 7],
+      "draw_time": "21:15",
+      "buy_end_time": "20:00",
+      "source_note": "固定开奖日兜底；节假日休市以开奖日历/API为准"
+    },
+    "dlt": {
+      "name": "大乐透",
+      "draw_weekdays": [1, 3, 6],
+      "draw_time": "20:30",
+      "buy_end_time": "20:00",
+      "source_note": "固定开奖日兜底；节假日休市以开奖日历/API为准"
+    },
+    "qxc": {
+      "name": "七星彩",
+      "draw_weekdays": [2, 5, 7],
+      "draw_time": "20:30",
+      "buy_end_time": "20:00",
+      "source_note": "固定开奖日兜底；节假日休市以开奖日历/API为准"
+    },
+    "qlc": {
+      "name": "七乐彩",
+      "draw_weekdays": [1, 3, 5],
+      "draw_time": "21:15",
+      "buy_end_time": "20:00",
+      "source_note": "固定开奖日兜底；节假日休市以开奖日历/API为准"
+    },
+    "fc3d": {
+      "name": "福彩3D",
+      "draw_weekdays": [1, 2, 3, 4, 5, 6, 7],
+      "draw_time": "21:15",
+      "buy_end_time": "20:00",
+      "source_note": "每日开奖兜底；节假日休市以开奖日历/API为准"
+    },
+    "pl3": {
+      "name": "排列三",
+      "draw_weekdays": [1, 2, 3, 4, 5, 6, 7],
+      "draw_time": "20:30",
+      "buy_end_time": "20:00",
+      "source_note": "每日开奖兜底；节假日休市以开奖日历/API为准"
+    },
+    "pl5": {
+      "name": "排列五",
+      "draw_weekdays": [1, 2, 3, 4, 5, 6, 7],
+      "draw_time": "20:30",
+      "buy_end_time": "20:00",
+      "source_note": "每日开奖兜底；节假日休市以开奖日历/API为准"
+    },
+    "kl8": {
+      "name": "快乐8",
+      "draw_weekdays": [1, 2, 3, 4, 5, 6, 7],
+      "draw_time": "21:30",
+      "buy_end_time": "20:00",
+      "source_note": "每日开奖兜底；节假日休市以开奖日历/API为准"
+    }
+  },
+  "holiday_overrides": []
+}

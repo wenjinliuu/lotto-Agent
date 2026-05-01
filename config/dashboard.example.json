@@ -1,0 +1,11 @@
+{
+  "enabled": false,
+  "mode": "cloud",
+  "host": "0.0.0.0",
+  "port": 8787,
+  "access_token": "",
+  "write_enabled": true,
+  "allowed_origins": [],
+  "public_base_url": "",
+  "show_absolute_paths": false
+}

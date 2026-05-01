@@ -1,2 +1,231 @@
 # lotto-Agent
+
 lotto-Agent 是给 OpenClaw / 微信 ClawBot 使用的私人彩票 Agent Skill。它支持 8 个彩种的 Crypto 级随机选号、开奖数据读取、SQLite 持久化、规则兑奖、定时任务和报表。
+
+## 支持彩种
+
+- 双色球
+- 大乐透
+- 七星彩
+- 福彩3D
+- 排列三
+- 排列五
+- 七乐彩
+- 快乐8
+
+## 部署
+
+当前上线范围只包含 Skill 本体。根目录的 `requirements.txt` 是 Skill 运行依赖。
+
+推荐目录：
+
+```bash
+/root/.openclaw/workspace/skills/lotto-Agent
+```
+
+安装依赖：
+
+```bash
+pip install -r requirements.txt
+```
+
+默认公共开奖数据源已经指向你的 GitHub 开奖仓库：
+
+```bash
+https://raw.githubusercontent.com/wenjinliuu/lottery-data-repo/main/public_data
+```
+
+如果其他人部署到自己的仓库，可以用环境变量覆盖：
+
+```bash
+export LOTTERY_PUBLIC_DATA_BASE_URL="https://raw.githubusercontent.com/<owner>/<repo>/main/public_data"
+```
+
+如果只读取默认 GitHub 公共开奖数据源，可以不配置开奖 API。维护者需要主动更新公共开奖仓库时，再配置开奖 API：
+
+```bash
+export JISU_APPKEY="你的极速数据 appkey"
+```
+
+初始化数据库：
+
+```bash
+python scripts/main.py status
+```
+
+`data/lottery.db` 不需要随仓库上传。Skill 第一次执行 `status`、选号、查开奖、兑奖或报表命令时，会自动创建本地 `data/lottery.db` 并初始化所需表结构。
+
+上线后建议先跑一次健康检查和基础命令：
+
+```bash
+python scripts/main.py status
+python scripts/main.py generate --lottery-type dlt --count 1 --wechat-text
+python scripts/main.py fetch_draw --lottery-type dlt --wechat-text
+```
+
+## 示例
+
+```bash
+python scripts/main.py generate --lottery-type dlt --count 10 --wechat-text
+python scripts/main.py generate --lottery-type dlt --count 5 --additional --multiple 2 --wechat-text
+python scripts/main.py confirm_purchase --limit 5 --wechat-text
+python scripts/main.py cancel_tickets --limit 5 --notes "只是看看" --wechat-text
+python scripts/main.py record_ticket --lottery-type dlt --issue 25001 --text "01 05 12 18 30 + 02 09" --multiple 2 --additional --wechat-text
+python scripts/main.py recent_tickets --limit 10 --wechat-text
+python scripts/main.py parse_command --text "大乐透5注2倍追加"
+python scripts/main.py generate --lottery-type kl8 --play-type 10 --count 5 --wechat-text
+python scripts/main.py fetch_draw --lottery-type all
+python scripts/main.py fetch_draw --lottery-type dlt --issue 25001
+python scripts/main.py query_draw_detail --lottery-type dlt --prize-level 一等奖 --wechat-text
+python scripts/main.py check_prize --wechat-text
+python scripts/main.py report --report-type weekly --wechat-text
+python scripts/main.py create_automation --task-action generate --lottery-type dlt --time-start 09:00 --payload '{"lottery_type":"dlt","count":5}' --wechat-text
+python scripts/main.py install_cron --confirm --wechat-text
+python scripts/main.py schedule --push
+```
+
+## 基础偏好
+
+默认大乐透不追加。大乐透普通一注 2 元，追加一注 3 元；所有彩种支持倍数，成本按 `单注价格 * 注数 * 倍数` 计算。用户可通过 `update_config` 随时修改默认彩种、默认注数、默认预算、默认玩法、是否追加、倍数、推送时间和推送内容。
+
+生成号码会尽量绑定 API 返回的下一期期号、下一期开奖时间和停止购买时间。用户说“今天、明天、后天、5月1日”时，系统会先按开奖日历/API 校正到真实开奖日；如果当天不是该彩种开奖日，会把号码绑定到下一次开奖日，并在结构化结果里返回 `notice_text` 供 ClawBot 单独提醒。兑奖时只按明确期号匹配；如果票据没有期号，则按记录的开奖日期匹配，避免一张票被拿去兑多个历史开奖。
+
+## 开奖日历
+
+开奖日期判断优先级：
+
+1. 数据库中最新开奖/API/公共 GitHub 数据里的 `next_issue`、`nextopentime`、`nextbuyendtime`
+2. 本地 `config/draw_calendar.json` 的节假日/特殊日历预留
+3. 固定开奖周历兜底
+
+固定周历只做兜底：双色球周二/四/日，七乐彩周一/三/五，大乐透周一/三/六，七星彩周二/五/日；福彩3D、排列三、排列五、快乐8按每日开奖处理。遇到节假日休市或官方调整时，以 API/开奖日历为准，不靠固定周历硬判。
+
+## 票据状态
+
+生成号码默认是 `purchased`，会计入成本并参与后续兑奖。用户明确说“先看看、参考一下、只是看看、先别记录、不算成本”时，才会以 `generated` 状态保存，不计入成本。取消后为 `cancelled`，重新生成替换上一组后旧票据为 `replaced`，都不会计入成本。
+
+常用口径：
+
+- 默认生成：计入投入和兑奖
+- 先看看/参考：不算成本
+- 已取消/已替换：不算成本
+- 手动记录号码：默认就是已购买
+
+手动记录支持常见复制格式：
+
+```text
+01 05 12 18 30 + 02 09
+01,05,12,18,30 / 02,09
+前区 01 05 12 18 30 后区 02 09
+红球 01 06 12 18 25 31 蓝球 09
+```
+
+兑奖后票据状态会自动更新为 `won` 或 `lost`。生成但未购买、已取消、已替换的票据不会参与兑奖。
+
+用户也可以查询开奖奖项明细，例如“上一期大乐透一等奖中了几个人，单注多少钱”。这类问题会先读取 SQLite 的 `draws` 和 `draw_prize_details`，返回中奖注数、单注奖金、追加注数和追加奖金；如果本地 SQLite 没有对应期开奖数据，会自动从 GitHub 公共开奖源补拉，写入本地数据库后再查询。GitHub 也没有时，才提示需要稍后再试或手动录入。
+
+配置更新会做基础校验，避免写入非法注数、倍数、推送时间。定时任务执行结果会写入 `scheduler_logs`，方便后续排查自动任务。
+
+## 自动化
+
+自动化分两层：
+
+- 业务自动任务：用户通过微信自然语言创建，保存到 SQLite 的 `scheduled_tasks`。
+- 服务器唤醒器：cron 每 5 分钟调用一次 `python scripts/main.py schedule --push`，让 Skill 检查到期任务。
+
+用户可以直接说：
+
+```text
+以后每天早上9点给我大乐透5注
+明天上午10点给我一组快乐8选十
+每天晚上10点帮我兑奖
+每周二四六晚上8点给我双色球3注
+以后大乐透开奖那天早上给我5注
+双色球开奖前一天晚上给我3注
+每期开奖后自动兑奖并告诉我
+查看自动任务
+确认开启自动化
+```
+
+开奖日类任务是受控触发器，不靠模型猜：`trigger_type=draw_day`，`draw_day_offset=0` 表示开奖当天，`-1` 表示开奖前一天。开奖日优先按 GitHub/API 日历判断，缺数据时才用本地固定周历兜底。
+
+自动化时间只保留三个自然窗口：早上/上午统一为 `07:00-12:00`，下午为 `12:00-18:00`，晚上为 `18:00-23:30`。用户说“上午、下午、晚上”这类窗口时，任务会在窗口内用 Crypto 随机生成一个当天执行时间；用户明确说“9点、晚上10点”时，按固定时间执行。
+
+如果用户说“有空的时候、看情况、你觉得合适的时候”等模糊时间，Skill 不会创建任务，会反问用户选择上午、下午、晚上或给出固定时间，避免自动化规则被污染。
+
+默认配置会开启“开奖检测+自动兑奖窗口”：每天 21:35-23:55 反复检查 GitHub 公共开奖源，抓到新开奖后写入 SQLite，然后立刻按本地已购买号码兑奖并推送结果。没有可兑奖号码时默认不推送空结果。
+
+用户也可以随时手动触发一次：
+
+```text
+为什么今天还没开奖呀
+帮我查一下开奖状态
+我今天中了没有
+```
+
+这会立即执行一次“抓 GitHub 开奖数据 -> 写库 -> 兑奖”的链路，不必等窗口里的下一次轮询。
+
+创建业务任务时，如果检测到 cron 唤醒器未开启，Skill 会提示用户回复“确认开启自动化”。确认后会尝试在服务器 crontab 中写入一条统一唤醒任务。其他部署者也可以手动添加：
+
+```bash
+*/5 * * * * cd /root/.openclaw/workspace/skills/lotto-Agent && python3 scripts/main.py schedule --push # lotto-Agent automation
+```
+
+## 第二条提示
+
+核心结果仍放在 `wechat_text`，第二条轻提示使用半开放机制：
+
+- `followup_contexts`：给 OpenClaw/大模型的结构化事实、语气和边界
+- `followup_messages`：规则兜底句，模型不生成时直接发送
+
+模型可以根据 `followup_contexts` 自由写得自然一点，但不能改动号码、期号、开奖日期、金额、购买状态，也不能承诺中奖或暗示提高中奖率。
+
+## 微信号码文本
+
+号码文本保持干净，只放号码相关信息。默认不显示每注序号，不在号码消息里附加免责声明或解释。大乐透不追加时不显示追加字段，只有追加时显示 `追加`。
+
+同一彩种多玩法会合并成一条消息，例如：
+
+```text
+福彩3D
+开奖：2026-05-01
+投入：32元
+
+单选｜5注｜2倍
+3  6  8
+0  1  9
+
+组三｜2注
+3  3  8
+
+组六｜2注｜2倍
+3  6  8
+```
+
+## 公共开奖数据
+
+默认情况下，Skill 不直接调用开奖 API，而是读取 GitHub 公共开奖 JSON。开奖仓库维护逻辑统一放在 `lottery-data-repo/`，Skill 根目录不再保留仓库更新脚本或 GitHub Actions。
+
+维护者更新流程：
+
+```bash
+cd lottery-data-repo
+export JISU_APPKEY="你的极速数据 appkey"
+python scripts/update_public_data.py
+python scripts/validate_public_data.py
+git add public_data
+git commit -m "Update lottery public data"
+git push
+```
+
+GitHub Actions 定时任务在 `lottery-data-repo/.github/workflows/update-lottery-data.yml`。需要在开奖仓库 Secrets 中配置 `JISU_APPKEY`。
+
+## 设计原则
+
+- 大模型只做意图理解、调用 Skill 和组织回复。
+- 选号、抓取、解析、兑奖、存储全部由 Python 规则代码完成。
+- 自动任务和微信手动调用共用同一套模块。
+- 随机源使用 `secrets.SystemRandom()`、`secrets.randbelow()`、`secrets.choice()`。
+- 不跨注去重，不做冷热号干预，不做概率优化。
+- 开奖原始响应完整保存在 `draws.raw_json`。
+- 规则、接口、输出格式、偏好和定时任务均配置化。
