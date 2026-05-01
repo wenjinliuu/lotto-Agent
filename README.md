@@ -1,3 +1,4 @@
+[README.md](https://github.com/user-attachments/files/27272374/README.md)
 # lotto-Agent
 
 lotto-Agent 是给 OpenClaw / 微信 ClawBot 使用的私人彩票 Agent Skill。它支持 8 个彩种的 Crypto 级随机选号、开奖数据读取、SQLite 持久化、规则兑奖、定时任务和报表。
@@ -41,11 +42,7 @@ https://raw.githubusercontent.com/wenjinliuu/lottery-data-repo/main/public_data
 export LOTTERY_PUBLIC_DATA_BASE_URL="https://raw.githubusercontent.com/<owner>/<repo>/main/public_data"
 ```
 
-如果只读取默认 GitHub 公共开奖数据源，可以不配置开奖 API。维护者需要主动更新公共开奖仓库时，再配置开奖 API：
-
-```bash
-export JISU_APPKEY="你的极速数据 appkey"
-```
+默认安装不需要配置开奖 API。Skill 会直接读取上面的 GitHub 公共开奖数据源。
 
 初始化数据库：
 
@@ -206,11 +203,10 @@ python scripts/main.py schedule --push
 
 默认情况下，Skill 不直接调用开奖 API，而是读取 GitHub 公共开奖 JSON。开奖仓库维护逻辑统一放在 `lottery-data-repo/`，Skill 根目录不再保留仓库更新脚本或 GitHub Actions。
 
-维护者更新流程：
+维护者更新流程在独立的 `lottery-data-repo` 仓库中完成：
 
 ```bash
 cd lottery-data-repo
-export JISU_APPKEY="你的极速数据 appkey"
 python scripts/update_public_data.py
 python scripts/validate_public_data.py
 git add public_data
@@ -218,7 +214,7 @@ git commit -m "Update lottery public data"
 git push
 ```
 
-GitHub Actions 定时任务在 `lottery-data-repo/.github/workflows/update-lottery-data.yml`。需要在开奖仓库 Secrets 中配置 `JISU_APPKEY`。
+GitHub Actions 定时任务在 `lottery-data-repo/.github/workflows/update-lottery-data.yml`。开奖 API 凭据只属于公共开奖仓库维护侧配置，普通 Skill 安装者不需要配置。
 
 ## 设计原则
 
