@@ -1,3 +1,4 @@
+[SKILL.md](https://github.com/user-attachments/files/27272380/SKILL.md)
 # lotto-Agent 彩票 Agent Skill
 
 当用户提到：彩票、双色球、大乐透、七星彩、七乐彩、福彩3D、排列三、排列五、快乐8、选号、开奖、兑奖、中奖、期号、奖池、奖金、报告、盈亏、推荐号码，必须优先使用此 Skill。
@@ -38,7 +39,6 @@ python scripts/main.py generate --lottery-type dlt --count 10 --wechat-text
 python scripts/main.py generate --lottery-type kl8 --play-type 10 --count 5 --wechat-text
 python scripts/main.py fetch_draw --lottery-type ssq --wechat-text
 python scripts/main.py fetch_draw --lottery-type dlt --issue 25001 --wechat-text
-python scripts/main.py fetch_draw --lottery-type dlt --source jisuapi --wechat-text
 python scripts/main.py check_prize --wechat-text
 python scripts/main.py report --report-type monthly --wechat-text
 python scripts/main.py schedule --job-name fetch_draws --push
@@ -150,7 +150,7 @@ https://raw.githubusercontent.com/wenjinliuu/lottery-data-repo/main/public_data
 export LOTTERY_PUBLIC_DATA_BASE_URL="https://raw.githubusercontent.com/<owner>/<repo>/main/public_data"
 ```
 
-开奖仓库维护逻辑统一放在 `lottery-data-repo/`。维护者才需要配置 `JISU_APPKEY` 并运行：
+开奖仓库维护逻辑统一放在独立的 `lottery-data-repo` 仓库。普通 Skill 使用者不需要配置开奖 API；维护者只在开奖仓库侧运行：
 
 ```bash
 cd lottery-data-repo
@@ -168,11 +168,7 @@ python scripts/validate_public_data.py
 /root/.openclaw/workspace/skills/lotto-Agent
 ```
 
-开奖接口默认使用极速数据，需在服务器环境变量配置：
-
-```bash
-export JISU_APPKEY="你的 appkey"
-```
+默认运行不需要配置开奖 API。Skill 会读取 GitHub 公共开奖数据源；只有公共开奖仓库维护侧才需要配置外部开奖接口凭据。
 
 数据库默认位置：
 
