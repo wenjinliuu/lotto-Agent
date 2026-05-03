@@ -1,5 +1,4 @@
-[SKILL.md](https://github.com/user-attachments/files/27272380/SKILL.md)
-# lotto-Agent 彩票 Agent Skill
+﻿# lotto-agent 彩票 Agent Skill
 
 当用户提到：彩票、双色球、大乐透、七星彩、七乐彩、福彩3D、排列三、排列五、快乐8、选号、开奖、兑奖、中奖、期号、奖池、奖金、报告、盈亏、推荐号码，必须优先使用此 Skill。
 
@@ -27,21 +26,24 @@ python scripts/main.py <action> [options]
 - `list_automation`：查看自动任务
 - `disable_automation`：停用自动任务
 - `install_cron` / `uninstall_cron` / `cron_status`：安装、停止、查看服务器唤醒器
+- `notification_status` / `configure_notification` / `bind_notification_target` / `list_notification_targets` / `enable_notification`：查看、配置、绑定目标并确认开启通用消息推送
 
-## 微信输出要求
+## 消息输出要求
 
-输出要简洁、适合微信阅读、数字格式整齐。号码文本只放号码相关内容，不在号码消息里附加免责声明、解释或废话。每注号码前不显示序号。大乐透不追加时不显示追加字段，追加时才显示 `追加`。不要夸大中奖概率，不承诺提高中奖率，不使用预测、必中、稳赚等表达。
+输出要简洁、适合消息阅读、数字格式整齐。号码文本只放号码相关内容，不在号码消息里附加免责声明、解释或废话。每注号码前不显示序号。大乐透不追加时不显示追加字段，追加时才显示 `追加`。不要夸大中奖概率，不承诺提高中奖率，不使用预测、必中、稳赚等表达。
 
 ## 常用调用
 
 ```bash
-python scripts/main.py generate --lottery-type dlt --count 10 --wechat-text
-python scripts/main.py generate --lottery-type kl8 --play-type 10 --count 5 --wechat-text
-python scripts/main.py fetch_draw --lottery-type ssq --wechat-text
-python scripts/main.py fetch_draw --lottery-type dlt --issue 25001 --wechat-text
-python scripts/main.py check_prize --wechat-text
-python scripts/main.py report --report-type monthly --wechat-text
+python scripts/main.py generate --lottery-type dlt --count 10 --message-text
+python scripts/main.py generate --lottery-type kl8 --play-type 10 --count 5 --message-text
+python scripts/main.py fetch_draw --lottery-type ssq --message-text
+python scripts/main.py fetch_draw --lottery-type dlt --issue 25001 --message-text
+python scripts/main.py check_prize --message-text
+python scripts/main.py report --report-type monthly --message-text
+python scripts/main.py create_automation --task-action generate --lottery-type ssq --count 5 --multiple 2 --time-start 09:00 --message-text
 python scripts/main.py schedule --job-name fetch_draws --push
+python scripts/main.py notification_status
 ```
 
 ## 自然语言意图映射
@@ -82,6 +84,11 @@ python scripts/main.py schedule --job-name fetch_draws --push
 - “每期开奖后自动兑奖并告诉我” -> `create_automation --task-action draw_check_prize`
 - “查看自动任务” -> `list_automation`
 - “确认开启自动化” -> `install_cron --confirm`
+- “通知状态 / 消息推送状态” -> `notification_status`
+- “查看通知目标 / 通知目标列表” -> `list_notification_targets`
+- “绑定当前窗口 / 以后发到这里” -> `bind_notification_target`
+- “确认绑定当前通知目标” -> `bind_notification_target --confirm`
+- “确认开启消息推送” -> `enable_notification --confirm`
 - “停止自动化” -> `uninstall_cron`
 - “我买了大乐透第25001期 01 05 12 18 30 + 02 09，2倍追加” -> `record_ticket --lottery-type dlt --issue 25001 --multiple 2 --additional`
 - “我买了双色球 01 06 12 18 25 31 + 09，帮我记录” -> `record_ticket --lottery-type ssq`
@@ -114,7 +121,7 @@ python scripts/main.py parse_command --text "大乐透5注2倍追加"
 
 ## 自动化规则
 
-用户说“每天、每周、明天、后天、定时、自动、每期开奖后”并包含选号、生成、兑奖、开奖、报告等意图时，优先创建自动任务，而不是只更新普通偏好。业务任务写入 SQLite 的 `scheduled_tasks`，服务器只需要安装一次统一 cron 唤醒器：每 5 分钟调用 `python3 scripts/main.py schedule --push`。如果用户创建了自动任务但 cron 未开启，回复中必须引导用户“确认开启自动化”。
+用户说“每天、每周、明天、后天、定时、自动、每期开奖后”并包含选号、生成、兑奖、开奖、报告等意图时，优先创建自动任务，而不是只更新普通偏好。业务任务写入 SQLite 的 `scheduled_tasks`，服务器只需要安装一次统一 cron 唤醒器：每 30 分钟调用 `python3 scripts/main.py schedule --push`。如果用户创建了自动任务但 cron 未开启，回复中必须引导用户“确认开启自动化”。
 
 开奖日类表达必须走受控触发器：`trigger_type=draw_day`，`draw_day_offset=0` 表示开奖当天，`-1` 表示开奖前一天。支持“开奖那天、开奖当天、开奖日、开奖前一天、开奖日前一天”。不要让模型自由脑补其它时间规则。
 
@@ -122,13 +129,41 @@ python scripts/main.py parse_command --text "大乐透5注2倍追加"
 
 `schedule` 执行时要先判断任务是否到期，并通过 `last_run_key` 避免重复执行。一次性任务执行后自动停用；长期任务保持启用。窗口类任务同一天只执行一次，计划时间记录在 `planned_run_key` 和 `planned_run_time`。
 
-默认 `schedule.json` 开启 `draw_check_prize_window`：21:35-23:55 由 cron 唤醒，按 10 分钟粒度允许重试抓 GitHub 公共开奖源。抓到开奖后写入 SQLite，再立即调用 `check_prize`。如果 `checked_count` 为 0，默认不主动推送空结果，除非配置 `subscriptions.push_content.empty_prize_result = true`。
+创建自动任务时，如果当前调用能拿到 OpenClaw 入站路由，payload 必须保存任务级 `delivery` 快照：`delivery.channel`、`delivery.chat_id`、`delivery.account_id`。定时任务推送时优先使用 `payload.delivery`，实现“谁创建，跟谁走”；只有老任务或缺少 delivery 的任务，才 fallback 到 `notification_recipient` 并解析 `config/notifications.json` 的绑定目标。
+
+自动化业务参数必须完整持久化到 `payload_json`。生成类任务至少要保留 `lottery_type`、`count`、`budget`、`play_type`、`multiple`、`is_additional` 等已经识别出的参数。`create_automation` 允许调用方把这些字段放在顶层参数或 `payload` 内；如果两边都有同名字段，以 `payload` 为准，顶层参数只作为兜底补全。不要只保存动作和时间，避免后续 cron 执行时退回默认 `count=1`、`multiple=1`。
+
+默认 `schedule.json` 开启 `draw_check_prize_window`：21:35-23:55 由 cron 唤醒，按 30 分钟粒度允许重试抓 GitHub 公共开奖源。抓到开奖后写入 SQLite，再立即调用 `check_prize`。如果 `checked_count` 为 0，默认不主动推送空结果，除非配置 `subscriptions.push_content.empty_prize_result = true`。
 
 用户说“为什么今天还没开奖呀 / 帮我查一下开奖状态 / 我今天中了没有”时，直接调用 `draw_check_prize`，立即执行一次“抓 GitHub 开奖数据 -> 写库 -> 兑奖”，并返回当前状态。
 
+## 通用消息推送
+
+主动推送必须通过 `config/notifications.json` 的通用通知层完成，不要在代码或提示里写死某个聊天平台。默认 provider 是 `dry_run` 且 `enabled=false`，表示只返回待发送 payload，不实际投递。`schedule --push` 如果发现通知未启用或配置不完整，必须返回 `requires_configuration=true` 和简短配置引导。
+
+支持 provider：
+
+- `host_payload`：返回 payload 给宿主接管投递。
+- `openclaw_cli`：调用 OpenClaw CLI 的 message send 能力，必须配置 channel 和 chat_id；多账号时应保存 account_id。
+- `dry_run`：调试用，不视为真实主动推送。
+
+lotto-agent 不支持任意 webhook 外发。lotto-agent 不允许配置自定义消息发送命令；`openclaw_cli` 永远只调用 PATH 中的 `openclaw` 可执行文件。主动推送仅通过 `openclaw message send` 或 `host_payload` 交给宿主处理。通用 `update_config` 不能修改 `config/notifications.json`，通知配置只能通过 `configure_notification` / `bind_notification_target` / `enable_notification` 修改。
+
+`openclaw_cli` 必须先绑定 recipient 的 channel/chat_id/account_id，再启用推送。推荐流程：
+
+```bash
+python scripts/main.py configure_notification --provider openclaw_cli --channel <channel> --chat-id <chat_id> --account-id <account_id>
+python scripts/main.py bind_notification_target --provider openclaw_cli --recipient self --channel <channel> --chat-id <chat_id> --account-id <account_id> --confirm
+python scripts/main.py enable_notification --confirm
+```
+
+OpenClaw 入站消息路由字段按 `channel`、`chat_id`、`account_id` 处理。`chat_id` 对应 CLI 出站时的 `--target`，`account_id` 对应多账号投递时的 `--account`。`recipient` 是 lotto-agent 内部通用别名，不代表固定平台；多窗口或多用户部署时，为每个需要接收自动化消息的目标配置明确别名，并通过 `list_notification_targets` 查看。用户换窗口后，如果宿主传入的 `chat_id` 不同，应再次引导绑定，不要把消息静默发给旧窗口。
+
+用户明确确认前，不要启用主动消息推送。配置后引导用户回复“确认开启消息推送”；确认后才调用 `enable_notification --confirm`。
+
 ## 第二条提示
 
-Skill 返回结果时，`wechat_text` 是第一条核心消息。若存在 `followup_contexts`，优先让大模型基于其中的事实和边界生成第二条自然提示；若模型没有生成，则发送 `followup_messages` 里的兜底句。第二条提示可以有一点个性和变化，但必须遵守：
+Skill 返回结果时，`message_text` 是第一条核心消息。若存在 `followup_contexts`，优先让大模型基于其中的事实和边界生成第二条自然提示；若模型没有生成，则发送 `followup_messages` 里的兜底句。第二条提示可以有一点个性和变化，但必须遵守：
 
 - 不改动号码、期号、开奖日期、金额、购买状态
 - 不承诺中奖，不暗示提高中奖率
@@ -165,13 +200,31 @@ python scripts/validate_public_data.py
 腾讯云服务器上建议放置在：
 
 ```text
-/root/.openclaw/workspace/skills/lotto-Agent
+/root/.openclaw/workspace/skills/lotto-agent
 ```
 
 默认运行不需要配置开奖 API。Skill 会读取 GitHub 公共开奖数据源；只有公共开奖仓库维护侧才需要配置外部开奖接口凭据。
 
-数据库默认位置：
+数据库默认位置在 OpenClaw workspace 下的 skill 专属目录，避免更新 skill 时覆盖历史数据，并符合 OpenClaw 社区常见的 workspace 数据存放习惯：
 
 ```text
-data/lottery.db
+~/.openclaw/workspace/lotto-agent-data/lottery.db
 ```
+
+Windows 下 `~` 是当前运行用户目录，例如 `C:\Users\<用户名>\.openclaw\workspace\lotto-agent-data\lottery.db`。部署者仍然可以用 `LOTTO_AGENT_DATA_DIR` 覆盖默认目录。cron 和手动命令必须使用同一个数据目录，确保读写同一份数据库。
+
+用户询问数据库位置或权限时，先让用户运行：
+
+```bash
+python scripts/main.py status
+```
+
+返回中的 `data_dir` 和 `db_path` 是实际路径。如果默认目录不能自动创建，推荐先以运行 OpenClaw/cron 的用户创建 workspace 数据目录：
+
+```bash
+mkdir -p "$HOME/.openclaw/workspace/lotto-agent-data"
+chmod 700 "$HOME/.openclaw/workspace/lotto-agent-data"
+python scripts/main.py status
+```
+
+如果 OpenClaw/cron 使用专用系统用户运行，应把目录授权给该用户，例如 `openclaw:openclaw`。只有在显式覆盖默认路径时，cron 命令才需要包含同一个 `LOTTO_AGENT_DATA_DIR`。
