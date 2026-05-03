@@ -1,4 +1,4 @@
-# 兑奖规则
+﻿# 兑奖规则
 
 兑奖逻辑在 `config/lottery_rules.json` 和 `scripts/check_prize.py` 中实现。浮动奖金记为中奖但金额为 0，后续可结合 `draw_prize_details` 补充实际金额。
 
