@@ -1,5 +1,5 @@
-{
-  "default_user_id": "wechat_self",
+﻿{
+  "default_user_id": "self",
   "default_lottery": "dlt",
   "default_count": 5,
   "default_budget": 50,

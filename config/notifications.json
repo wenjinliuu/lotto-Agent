@@ -1,0 +1,23 @@
+{
+  "enabled": false,
+  "provider": "dry_run",
+  "default_recipient": "self",
+  "recipients": {
+    "self": {
+      "display_name": "我",
+      "target": "",
+      "chat_id": "",
+      "account_id": "",
+      "channel": "",
+      "bound": false,
+      "updated_at": ""
+    }
+  },
+  "providers": {
+    "dry_run": {},
+    "host_payload": {},
+    "openclaw_cli": {
+      "channel": ""
+    }
+  }
+}

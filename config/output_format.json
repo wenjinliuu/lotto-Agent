@@ -1,7 +1,7 @@
-{
+﻿{
   "separator": "  ",
   "plus_separator": " + ",
-  "wechat": {
+  "message": {
     "max_ticket_lines": 30,
     "show_ticket_index": false,
     "show_disclaimer": false,

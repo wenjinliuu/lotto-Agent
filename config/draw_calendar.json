@@ -1,4 +1,4 @@
-{
+﻿{
   "timezone": "Asia/Shanghai",
   "policy": {
     "source_priority": ["api_next", "local_calendar", "weekly_fallback"],

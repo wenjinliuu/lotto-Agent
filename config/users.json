@@ -1,6 +1,6 @@
-{
+﻿{
   "users": [
-    {"platform_user_id": "wechat_self", "display_name": "我", "is_allowed": true}
+    {"platform_user_id": "self", "display_name": "我", "is_allowed": true}
   ],
   "allow_unknown_users": false
 }
