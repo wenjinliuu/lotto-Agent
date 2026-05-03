@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import hashlib
 from typing import Any
@@ -77,7 +77,7 @@ TEMPLATES: dict[str, list[str]] = {
     ],
     "cron_installed": [
         "自动化唤醒器已开启，后续任务会按时间自动执行。",
-        "定时唤醒已经接上，之后它会每 5 分钟检查一次。",
+        "定时唤醒已经接上，之后它会每 30 分钟检查一次。",
         "自动化通道打开了，后面的任务会自己醒来干活。",
     ],
     "config_updated": [
@@ -115,7 +115,7 @@ EVENT_DESCRIPTIONS = {
 STRICT_EVENTS = {"date_adjusted", "generate_preview", "cancel", "cron_needed", "fetch_partial", "prize_empty"}
 
 DEFAULT_GUARDRAILS = [
-    "只写一句中文微信提示，尽量短，口吻自然一点。",
+    "只写一句中文消息提示，尽量短，口吻自然一点。",
     "不要重复第一条核心结果里的号码、金额明细或长表格。",
     "不要承诺中奖，不要暗示提高中奖率，不要使用预测、必中、稳赚等表达。",
     "不要改动或新增任何号码、期号、开奖日期、金额、状态。",
@@ -161,7 +161,7 @@ def add_context(result: dict[str, Any], kind: str, fallback: str, seed: Any = ""
             "fallback_text": fallback,
             "freedom": "high" if kind not in STRICT_EVENTS else "medium",
             "style": {
-                "tone": "自然、轻松、像微信里顺手补一句；可以有一点点个性，但不要油腻。",
+                "tone": "自然、轻松、像聊天里顺手补一句；可以有一点点个性，但不要油腻。",
                 "length": "1 sentence, 8-28 Chinese characters preferred",
                 "avoid_template_feel": True,
             },

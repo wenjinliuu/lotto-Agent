@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import os
@@ -7,9 +7,13 @@ from pathlib import Path
 from typing import Any
 
 
+def default_data_dir() -> str:
+    return str(Path.home() / ".openclaw" / "workspace" / "lotto-agent-data")
+
+
 BASE_DIR = Path(__file__).resolve().parents[1]
 CONFIG_DIR = BASE_DIR / "config"
-DATA_DIR = BASE_DIR / "data"
+DATA_DIR = Path(os.environ.get("LOTTO_AGENT_DATA_DIR") or default_data_dir()).expanduser()
 BACKUP_DIR = BASE_DIR / "backups"
 
 
@@ -17,7 +21,7 @@ def load_json(path: Path | str, default: Any = None) -> Any:
     target = Path(path)
     if not target.exists():
         return default
-    with target.open("r", encoding="utf-8") as handle:
+    with target.open("r", encoding="utf-8-sig") as handle:
         return json.load(handle)
 
 

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from typing import Any
@@ -24,7 +24,7 @@ def fetch_draw(lottery_type: str = "all", issue: str | None = None, source: str 
         for key in RULES.get("lotteries", {}):
             results.append(fetch_draw(key, issue=issue, source=source))
         ok_count = len([item for item in results if item.get("ok")])
-        result = {"ok": ok_count == len(results), "results": results, "wechat_text": f"开奖抓取完成：{ok_count}/{len(results)} 成功"}
+        result = {"ok": ok_count == len(results), "results": results, "message_text": f"开奖抓取完成：{ok_count}/{len(results)} 成功"}
         add_followup(result, "fetch_ok" if result["ok"] else "fetch_partial", f"all:{ok_count}:{len(results)}")
         return result
 
@@ -44,7 +44,7 @@ def fetch_public_draw(lottery_type: str, issue: str | None, source_name: str, so
         draw = parse_public_draw(lottery_type, draw_payload, source_url=source_url)
         draw_id = database.upsert_draw(draw)
         database.log_api(lottery_type, source_url, "ok", f"public source {source_name} saved issue {draw['issue']}")
-        result = {"ok": True, "draw_id": draw_id, "draw": draw, "wechat_text": render_draw(draw)}
+        result = {"ok": True, "draw_id": draw_id, "draw": draw, "message_text": render_draw(draw)}
         add_followup(result, "fetch_ok", f"{lottery_type}:{draw.get('issue')}")
         return result
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
@@ -78,7 +78,7 @@ def fetch_api_draw(key: str, issue: str | None, source_name: str, source_config:
             draw["raw"] = {"query": payload, "class_info": class_info}
         draw_id = database.upsert_draw(draw)
         database.log_api(key, safe_url(url), "ok", f"api source {source_name} saved issue {draw['issue']}")
-        result = {"ok": True, "draw_id": draw_id, "draw": draw, "wechat_text": render_draw(draw)}
+        result = {"ok": True, "draw_id": draw_id, "draw": draw, "message_text": render_draw(draw)}
         add_followup(result, "fetch_ok", f"{key}:{draw.get('issue')}")
         return result
     except (HTTPError, URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
@@ -129,7 +129,7 @@ def manual_draw_input(lottery_type: str, payload: dict[str, Any] | str) -> dict[
         payload = json.loads(payload)
     draw = parse_manual(key, payload)
     draw_id = database.upsert_draw(draw)
-    result = {"ok": True, "draw_id": draw_id, "draw": draw, "wechat_text": render_draw(draw)}
+    result = {"ok": True, "draw_id": draw_id, "draw": draw, "message_text": render_draw(draw)}
     add_followup(result, "fetch_ok", f"{key}:{draw.get('issue')}")
     return result
 

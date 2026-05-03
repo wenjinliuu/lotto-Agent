@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import shutil
 from pathlib import Path
@@ -13,7 +13,9 @@ ALLOWED_FILES = {"preferences": "preferences.json", "schedule": "schedule.json",
 
 def update_config(config_name: str, updates: dict[str, Any]) -> dict[str, Any]:
     if config_name not in ALLOWED_FILES:
-        return {"ok": False, "error": "只允许修改 preferences、schedule、output_format"}
+        # notifications.json 不再走通用 update_config，必须使用专用接口
+        # （configure_notification / bind_notification_target / enable_notification）。
+        return {"ok": False, "error": "只允许修改 preferences、schedule、output_format；通知配置请使用 configure_notification / bind_notification_target / enable_notification"}
     path = CONFIG_DIR / ALLOWED_FILES[config_name]
     current = load_json(path, {})
     error = validate_updates(config_name, updates)
@@ -22,7 +24,7 @@ def update_config(config_name: str, updates: dict[str, Any]) -> dict[str, Any]:
     backup_path = backup_config(path)
     merged = deep_merge(current, updates)
     dump_json(path, merged)
-    result = {"ok": True, "backup": str(backup_path), "config": merged, "wechat_text": "配置已更新，并已备份。"}
+    result = {"ok": True, "backup": str(backup_path), "config": merged, "message_text": "配置已更新，并已备份。"}
     add_followup(result, "config_updated", str(backup_path))
     return result
 

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from typing import Any
@@ -43,7 +43,7 @@ def query_draw_detail(
 
     details = find_prize_details(int(draw["id"]), prize_level)
     text = render_draw_detail(draw, details, prize_level)
-    return {"ok": True, "draw": draw, "prize_details": details, "sync_result": sync_result, "wechat_text": text}
+    return {"ok": True, "draw": draw, "prize_details": details, "sync_result": sync_result, "message_text": text}
 
 
 def should_sync_draw(draw: dict[str, Any] | None) -> bool:

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -52,7 +52,7 @@ def run_job(job: dict[str, Any], push: bool = False) -> dict[str, Any]:
         else:
             result = {"ok": False, "error": f"未知任务: {action}"}
         if push and should_push_result(action, result, {}):
-            result["push"] = push_message(result["wechat_text"])
+            result["push"] = push_message(result["message_text"])
         database.log_scheduler(job.get("name", ""), str(action), "ok" if result.get("ok") else "error", result.get("error", ""), result)
         return result
     except Exception as exc:
@@ -78,8 +78,8 @@ def generate_from_preferences() -> dict[str, Any]:
                 is_purchased=True,
             )
         )
-    text_parts = [item.get("wechat_text", "") for item in results if item.get("wechat_text")]
-    return {"ok": all(item.get("ok") for item in results), "results": results, "wechat_text": "\n\n".join(text_parts)}
+    text_parts = [item.get("message_text", "") for item in results if item.get("message_text")]
+    return {"ok": all(item.get("ok") for item in results), "results": results, "message_text": "\n\n".join(text_parts)}
 
 
 def run_due_automation(push: bool = False) -> list[dict[str, Any]]:
@@ -105,7 +105,7 @@ def run_scheduled_task(task: dict[str, Any], push: bool = False, now: datetime |
                 count=int(payload.get("count", 1)),
                 budget=payload.get("budget"),
                 play_type=payload.get("play_type") or task.get("play_type"),
-                user_platform_id=payload.get("user_platform_id", "wechat_self"),
+                user_platform_id=payload.get("user_platform_id", "self"),
                 multiple=int(payload.get("multiple", 1)),
                 is_additional=payload.get("is_additional"),
                 source="automation",
@@ -123,7 +123,14 @@ def run_scheduled_task(task: dict[str, Any], push: bool = False, now: datetime |
         else:
             result = {"ok": False, "error": f"未知自动任务: {action}"}
         if push and should_push_result(action, result, payload):
-            result["push"] = push_message(result["wechat_text"], payload.get("user_platform_id", "wechat_self"))
+            recipient = payload.get("notification_recipient") or payload.get("user_platform_id", "self")
+            result["push"] = push_message(
+                result["message_text"],
+                recipient,
+                payload.get("notification_channel"),
+                meta={"task_id": task.get("id"), "action": action},
+                delivery=payload.get("delivery"),
+            )
         mark_task_ran(int(task["id"]), run_key(task, now), result)
         if task.get("schedule_type") == "once":
             disable_task(int(task["id"]))
@@ -174,7 +181,7 @@ def draw_day_task_due(task: dict[str, Any], now: datetime) -> bool:
 def render_draw_check_text(fetch_result: dict[str, Any], prize_result: dict[str, Any]) -> str:
     if int(prize_result.get("checked_count") or 0) <= 0:
         return ""
-    return "\n\n".join(part for part in [fetch_result.get("wechat_text"), prize_result.get("wechat_text")] if part)
+    return "\n\n".join(part for part in [fetch_result.get("message_text"), prize_result.get("message_text")] if part)
 
 
 def run_draw_check_prize(
@@ -195,7 +202,7 @@ def run_draw_check_prize(
         "checked_count": checked_count,
         "winning_count": int(prize_result.get("winning_count") or 0),
         "total_amount": float(prize_result.get("total_amount") or 0),
-        "wechat_text": render_manual_draw_check_text(fetch_result, prize_result, quiet_empty),
+        "message_text": render_manual_draw_check_text(fetch_result, prize_result, quiet_empty),
     }
     if checked_count <= 0:
         add_followup(result, "prize_empty", f"{lottery_type}:{issue}:{user_platform_id}")
@@ -209,15 +216,15 @@ def run_draw_check_prize(
 def render_manual_draw_check_text(fetch_result: dict[str, Any], prize_result: dict[str, Any], quiet_empty: bool) -> str:
     checked_count = int(prize_result.get("checked_count") or 0)
     if checked_count > 0:
-        return "\n\n".join(part for part in [fetch_result.get("wechat_text"), prize_result.get("wechat_text")] if part)
+        return "\n\n".join(part for part in [fetch_result.get("message_text"), prize_result.get("message_text")] if part)
     if quiet_empty:
         return ""
-    fetch_text = fetch_result.get("wechat_text") or ("开奖数据同步成功" if fetch_result.get("ok") else f"开奖数据同步失败：{fetch_result.get('error') or '-'}")
+    fetch_text = fetch_result.get("message_text") or ("开奖数据同步成功" if fetch_result.get("ok") else f"开奖数据同步失败：{fetch_result.get('error') or '-'}")
     return f"{fetch_text}\n\n暂时没有匹配到可兑奖的已购买号码。"
 
 
 def should_push_result(action: str | None, result: dict[str, Any], payload: dict[str, Any]) -> bool:
-    if not result.get("wechat_text"):
+    if not result.get("message_text"):
         return False
     preferences = load_json(CONFIG_DIR / "preferences.json", {})
     push_content = preferences.get("subscriptions", {}).get("push_content", {})
@@ -310,7 +317,7 @@ def run_key(task: dict[str, Any], now: datetime) -> str:
     if task.get("schedule_type") == "once":
         return f"once:{task['id']}:{task.get('run_date')}"
     if task.get("action") == "draw_check_prize":
-        return f"{task['id']}:{now.date().isoformat()}:{now.hour:02d}:{now.minute // 10}"
+        return f"{task['id']}:{now.date().isoformat()}:{now.hour:02d}:{now.minute // 30}"
     return f"{task['id']}:{now.date().isoformat()}"
 
 

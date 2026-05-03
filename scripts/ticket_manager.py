@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from typing import Any
@@ -6,13 +6,14 @@ from typing import Any
 import database
 from followup import add as add_followup
 from generate_numbers import format_numbers, generate
+from onboarding import add_purchase_onboarding
 from utils import CONFIG_DIR, load_json, normalize_lottery_type, now_iso
 
 
 RULES = load_json(CONFIG_DIR / "lottery_rules.json", {})
 
 
-def confirm_recent(user_platform_id: str = "wechat_self", limit: int = 20, ticket_ids: list[int] | None = None) -> dict[str, Any]:
+def confirm_recent(user_platform_id: str = "self", limit: int = 20, ticket_ids: list[int] | None = None) -> dict[str, Any]:
     return update_ticket_status(
         user_platform_id=user_platform_id,
         status="purchased",
@@ -22,7 +23,7 @@ def confirm_recent(user_platform_id: str = "wechat_self", limit: int = 20, ticke
     )
 
 
-def cancel_recent(user_platform_id: str = "wechat_self", limit: int = 20, ticket_ids: list[int] | None = None, notes: str = "") -> dict[str, Any]:
+def cancel_recent(user_platform_id: str = "self", limit: int = 20, ticket_ids: list[int] | None = None, notes: str = "") -> dict[str, Any]:
     if ticket_ids is None:
         batch = latest_batch(user_platform_id)
         if batch:
@@ -62,12 +63,14 @@ def update_ticket_status(user_platform_id: str, status: str, limit: int, ticket_
             )
         conn.commit()
     action_text = "已确认购买" if status == "purchased" else "已取消统计"
-    result = {"ok": True, "updated_count": len(rows), "ticket_ids": [row["id"] for row in rows], "wechat_text": f"{action_text} {len(rows)} 注。"}
+    result = {"ok": True, "updated_count": len(rows), "ticket_ids": [row["id"] for row in rows], "purchased_confirmed": status == "purchased", "message_text": f"{action_text} {len(rows)} 注。"}
     add_followup(result, "confirm" if status == "purchased" else "cancel", ",".join(str(row["id"]) for row in rows))
+    if status == "purchased":
+        add_purchase_onboarding(result, user_platform_id)
     return result
 
 
-def latest_batch(user_platform_id: str = "wechat_self") -> dict[str, Any] | None:
+def latest_batch(user_platform_id: str = "self") -> dict[str, Any] | None:
     database.init_db()
     with database.connect() as conn:
         row = conn.execute(
@@ -107,12 +110,12 @@ def cancel_batch(batch_id: int, notes: str = "") -> dict[str, Any]:
             (now_iso(), notes, batch_id),
         )
         conn.commit()
-    result = {"ok": True, "updated_count": cursor.rowcount, "batch_id": batch_id, "wechat_text": f"已取消上一组 {cursor.rowcount} 注，不计入成本。"}
+    result = {"ok": True, "updated_count": cursor.rowcount, "batch_id": batch_id, "message_text": f"已取消上一组 {cursor.rowcount} 注，不计入成本。"}
     add_followup(result, "cancel", batch_id)
     return result
 
 
-def replace_last_batch(user_platform_id: str = "wechat_self", overrides: dict[str, Any] | None = None) -> dict[str, Any]:
+def replace_last_batch(user_platform_id: str = "self", overrides: dict[str, Any] | None = None) -> dict[str, Any]:
     batch = latest_batch(user_platform_id)
     if not batch:
         return {"ok": False, "error": "没有找到可替换的上一组号码"}
@@ -148,7 +151,7 @@ def replace_last_batch(user_platform_id: str = "wechat_self", overrides: dict[st
         replaced_by_batch_id=int(batch["id"]),
     )
     result["replaced_batch_id"] = int(batch["id"])
-    result["wechat_text"] = f"上一组已取消并重新生成：\n{result['wechat_text']}"
+    result["message_text"] = f"上一组已取消并重新生成：\n{result['message_text']}"
     add_followup(result, "replace", batch["id"])
     return result
 
@@ -178,7 +181,7 @@ def select_target_tickets(conn, user_platform_id: str, limit: int, ticket_ids: l
     ).fetchall()
 
 
-def recent_tickets(user_platform_id: str = "wechat_self", limit: int = 10) -> dict[str, Any]:
+def recent_tickets(user_platform_id: str = "self", limit: int = 10) -> dict[str, Any]:
     database.init_db()
     rows = database.fetch_all(
         """
@@ -200,7 +203,7 @@ def recent_tickets(user_platform_id: str = "wechat_self", limit: int = 10) -> di
         status = row.get("ticket_status") or ("purchased" if row.get("is_purchased") else "generated")
         batch = f"B{row.get('batch_id')}" if row.get("batch_id") else "-"
         lines.append(f"#{row['id']} {batch} {row['lottery_type']} {formatted} [{status}] {row.get('issue') or row.get('draw_date') or ''}")
-    return {"ok": True, "tickets": rows, "wechat_text": "\n".join(lines)}
+    return {"ok": True, "tickets": rows, "message_text": "\n".join(lines)}
 
 
 def parse_ticket_ids(value: Any) -> list[int] | None:

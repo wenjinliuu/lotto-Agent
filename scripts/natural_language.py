@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import re
 from typing import Any
@@ -14,6 +14,9 @@ def parse_command(text: str) -> dict[str, Any]:
     message = str(text or "").strip()
     if not message:
         return {"ok": False, "error": "空命令"}
+    notification_intent = parse_notification_intent(message)
+    if notification_intent:
+        return notification_intent
     lottery_type = detect_lottery(message)
     count = detect_count(message)
     budget = detect_budget(message)
@@ -235,6 +238,24 @@ def parse_cron_intent(text: str) -> dict[str, Any] | None:
     return None
 
 
+def parse_notification_intent(text: str) -> dict[str, Any] | None:
+    if any(word in text for word in ["通知目标列表", "查看通知目标", "推送目标列表", "查看推送目标"]):
+        return {"ok": True, "action": "list_notification_targets", "params": {}}
+    if any(word in text for word in ["确认绑定当前通知目标", "确认绑定通知目标", "确认绑定当前窗口", "确认把消息发到这里"]):
+        return {"ok": True, "action": "bind_notification_target", "params": {"confirm": True}}
+    if any(word in text for word in ["绑定当前通知目标", "绑定通知目标", "绑定当前窗口", "把消息发到这里", "以后发到这里"]):
+        return {"ok": True, "action": "bind_notification_target", "params": {"confirm": False}}
+    if any(word in text for word in ["确认开启消息推送", "确认启用消息推送", "确认开启通知", "确认启用通知"]):
+        return {"ok": True, "action": "enable_notification", "params": {"confirm": True}}
+    if any(word in text for word in ["开启消息推送", "启用消息推送", "开启通知", "启用通知"]):
+        return {"ok": True, "action": "enable_notification", "params": {"confirm": False}}
+    if any(word in text for word in ["消息推送状态", "通知状态", "推送配置"]):
+        return {"ok": True, "action": "notification_status", "params": {}}
+    if "openclaw" in text.lower() and any(word in text for word in ["推送", "通知"]):
+        return {"ok": True, "action": "configure_notification", "params": {"provider": "openclaw_cli"}}
+    return None
+
+
 def parse_automation_command(
     text: str,
     lottery_type: str | None,
@@ -397,7 +418,7 @@ def parse_clarification_needed(text: str) -> dict[str, Any] | None:
             "ok": False,
             "needs_clarification": True,
             "error": "时间不够明确",
-            "wechat_text": "这个时间有点模糊。你想固定几点，还是放在上午、下午或晚上？",
+            "message_text": "这个时间有点模糊。你想固定几点，还是放在上午、下午或晚上？",
             "followup_contexts": [
                 {
                     "event": "clarify_time",

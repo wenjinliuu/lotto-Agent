@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import re
 from typing import Any
@@ -22,7 +22,7 @@ def record_manual_tickets(
     draw_date: str | None = None,
     multiple: int = 1,
     is_additional: bool = False,
-    user_platform_id: str = "wechat_self",
+    user_platform_id: str = "self",
     notes: str = "",
 ) -> dict[str, Any]:
     database.init_db()
@@ -88,7 +88,7 @@ def record_manual_tickets(
         lines.append(f"开奖日期：{draw_date}")
     for index, ticket in enumerate(tickets, 1):
         lines.append(f"{index}. {ticket['formatted']}")
-    result = {"ok": True, "batch_id": batch_id, "tickets": tickets, "notice_text": tracking.note, "wechat_text": "\n".join(lines)}
+    result = {"ok": True, "batch_id": batch_id, "tickets": tickets, "notice_text": tracking.note, "message_text": "\n".join(lines)}
     add_followup(result, "manual_ticket", batch_id)
     add_note(result, tracking.note, seed=batch_id)
     return result

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from collections import Counter
@@ -224,7 +224,7 @@ def check_prize(lottery_type: str | None = None, issue: str | None = None, user_
         conn.commit()
     win_count = len([item for item in checked if item["is_winning"]])
     amount = sum(float(item["prize_amount"]) for item in checked)
-    result = {"ok": True, "checked_count": len(checked), "winning_count": win_count, "total_amount": amount, "results": checked, "wechat_text": f"兑奖完成：{len(checked)} 注，中奖 {win_count} 注，金额 {amount:g} 元"}
+    result = {"ok": True, "checked_count": len(checked), "winning_count": win_count, "total_amount": amount, "results": checked, "message_text": f"兑奖完成：{len(checked)} 注，中奖 {win_count} 注，金额 {amount:g} 元"}
     if len(checked) <= 0:
         add_followup(result, "prize_empty", f"{lottery_type}:{issue}:{user_platform_id}")
     elif win_count > 0:

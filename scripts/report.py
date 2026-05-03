@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from datetime import date, timedelta
 
@@ -94,7 +94,7 @@ def build_report(report_type: str = "daily", user_platform_id: str | None = None
             (user_id, report_type, start, end, content),
         )
         conn.commit()
-    result = {"ok": True, "report_type": report_type, "content": content, "wechat_text": content}
+    result = {"ok": True, "report_type": report_type, "content": content, "message_text": content}
     add_followup(result, "report", f"{report_type}:{start}:{end}")
     return result
 

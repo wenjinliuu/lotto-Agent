@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from typing import Any
 from collections import defaultdict
@@ -7,6 +7,7 @@ import crypto_random
 import database
 from draw_calendar import resolve_tracking_info as resolve_calendar_tracking
 from followup import add as add_followup, add_note
+from onboarding import add_purchase_onboarding
 from utils import CONFIG_DIR, load_json, normalize_lottery_type, now_iso, pad_number
 
 
@@ -95,13 +96,13 @@ def generate(
     count: int = 1,
     budget: float | None = None,
     play_type: str | None = None,
-    user_platform_id: str = "wechat_self",
+    user_platform_id: str = "self",
     issue: str | None = None,
     draw_date: str | None = None,
     multiple: int = 1,
     is_additional: bool | None = None,
     is_purchased: bool = True,
-    source: str = "wechat",
+    source: str = "message",
     user_command: str | None = None,
     batch_status: str | None = None,
     replaced_by_batch_id: int | None = None,
@@ -178,7 +179,7 @@ def generate(
     total_cost = sum(float(ticket["cost"]) for ticket in tickets)
     if save and batch_id:
         database.update_ticket_batch(batch_id, {"total_cost": total_cost, "count": len(tickets)})
-    text = render_wechat(key, tickets, total_cost)
+    text = render_message(key, tickets, total_cost)
     result = {
         "ok": True,
         "lottery_type": key,
@@ -187,21 +188,23 @@ def generate(
         "total_cost": total_cost,
         "tracking": tracking.__dict__,
         "notice_text": tracking.note,
-        "wechat_text": text,
+        "message_text": text,
     }
     add_followup(result, "generate_purchased" if is_purchased else "generate_preview", batch_id or text)
     add_note(result, tracking.note, seed=batch_id or text)
+    if is_purchased:
+        add_purchase_onboarding(result, user_platform_id)
     return result
 
 
 def generate_plan(
     lottery_type: str,
     items: list[dict[str, Any]],
-    user_platform_id: str = "wechat_self",
+    user_platform_id: str = "self",
     issue: str | None = None,
     draw_date: str | None = None,
     is_purchased: bool = True,
-    source: str = "wechat",
+    source: str = "message",
     user_command: str | None = None,
     save: bool = True,
 ) -> dict[str, Any]:
@@ -269,7 +272,7 @@ def generate_plan(
         groups.append({"item": item, "tickets": group_tickets})
     if save and batch_id:
         database.update_ticket_batch(batch_id, {"total_cost": total_cost, "count": len(tickets)})
-    text = render_plan_wechat(key, groups, total_cost, is_purchased, issue, draw_date, tracking.status)
+    text = render_plan_message(key, groups, total_cost, is_purchased, issue, draw_date, tracking.status)
     result = {
         "ok": True,
         "lottery_type": key,
@@ -279,10 +282,12 @@ def generate_plan(
         "total_cost": total_cost,
         "tracking": tracking.__dict__,
         "notice_text": tracking.note,
-        "wechat_text": text,
+        "message_text": text,
     }
     add_followup(result, "generate_purchased" if is_purchased else "generate_preview", batch_id or text)
     add_note(result, tracking.note, seed=batch_id or text)
+    if is_purchased:
+        add_purchase_onboarding(result, user_platform_id)
     return result
 
 
@@ -300,7 +305,7 @@ def normalize_plan_item(lottery_type: str, config: dict[str, Any], item: dict[st
     }
 
 
-def render_wechat(lottery_type: str, tickets: list[dict[str, Any]], total_cost: float) -> str:
+def render_message(lottery_type: str, tickets: list[dict[str, Any]], total_cost: float) -> str:
     name = RULES["lotteries"][lottery_type]["name"]
     header_parts = [name]
     if lottery_type in {"fc3d", "pl3"}:
@@ -316,10 +321,10 @@ def render_wechat(lottery_type: str, tickets: list[dict[str, Any]], total_cost: 
         header_parts.append("仅生成")
     lines = ["｜".join(part for part in header_parts if part and part != "标准")]
     if tickets and tickets[0].get("issue"):
-        if FORMAT.get("wechat", {}).get("show_issue_on_generate", False):
+        if FORMAT.get("message", {}).get("show_issue_on_generate", False):
             lines.append(f"期号：{tickets[0]['issue']}")
     elif tickets and tickets[0].get("draw_date"):
-        if FORMAT.get("wechat", {}).get("show_draw_date_on_generate", True):
+        if FORMAT.get("message", {}).get("show_draw_date_on_generate", True):
             lines.append(f"开奖：{tickets[0]['draw_date']}")
     elif tickets and tickets[0].get("tracking_status"):
         lines.append(f"开奖：待确认")
@@ -330,19 +335,19 @@ def render_wechat(lottery_type: str, tickets: list[dict[str, Any]], total_cost: 
     return "\n".join(lines)
 
 
-def render_plan_wechat(lottery_type: str, groups: list[dict[str, Any]], total_cost: float, is_purchased: bool, issue: str | None, draw_date: str | None, tracking_status: str) -> str:
+def render_plan_message(lottery_type: str, groups: list[dict[str, Any]], total_cost: float, is_purchased: bool, issue: str | None, draw_date: str | None, tracking_status: str) -> str:
     name = RULES["lotteries"][lottery_type]["name"]
     total_count = sum(len(group["tickets"]) for group in groups)
     single_group = len(groups) == 1
     if single_group:
-        return render_wechat(lottery_type, groups[0]["tickets"], total_cost)
+        return render_message(lottery_type, groups[0]["tickets"], total_cost)
     header = [name]
     if not is_purchased:
         header.append("仅生成")
     lines = ["｜".join(header)]
-    if issue and FORMAT.get("wechat", {}).get("show_issue_on_generate", False):
+    if issue and FORMAT.get("message", {}).get("show_issue_on_generate", False):
         lines.append(f"期号：{issue}")
-    elif draw_date and FORMAT.get("wechat", {}).get("show_draw_date_on_generate", True):
+    elif draw_date and FORMAT.get("message", {}).get("show_draw_date_on_generate", True):
         lines.append(f"开奖：{draw_date}")
     elif tracking_status:
         lines.append("开奖：待确认")

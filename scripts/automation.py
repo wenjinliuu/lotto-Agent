@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import re
@@ -8,6 +8,7 @@ from typing import Any
 import database
 from cron_manager import cron_status
 from followup import add as add_followup
+from push_message import notification_binding_status, notification_status
 from utils import CONFIG_DIR, load_json, normalize_lottery_type, now_iso
 
 
@@ -17,7 +18,7 @@ CN_TZ = timezone(timedelta(hours=8))
 
 def create_task(
     action: str,
-    user_platform_id: str = "wechat_self",
+    user_platform_id: str = "self",
     lottery_type: str | None = None,
     play_type: str | None = None,
     schedule_type: str = "recurring",
@@ -29,9 +30,11 @@ def create_task(
     time_start: str | None = None,
     time_end: str | None = None,
     run_time_mode: str = "fixed",
+    notification_recipient: str | None = None,
+    delivery: dict[str, Any] | None = None,
     payload: dict[str, Any] | None = None,
     raw_text: str = "",
-    source: str = "wechat",
+    source: str = "message",
 ) -> dict[str, Any]:
     database.init_db()
     key = normalize_lottery_type(lottery_type, RULES) if lottery_type else None
@@ -41,6 +44,11 @@ def create_task(
         payload.setdefault("lottery_type", key)
     if play_type:
         payload.setdefault("play_type", play_type)
+    payload.setdefault("user_platform_id", user_platform_id)
+    payload.setdefault("notification_recipient", notification_recipient or user_platform_id)
+    delivery_route = normalize_delivery(delivery or payload.get("delivery"))
+    if delivery_route:
+        payload["delivery"] = delivery_route
     time_start = time_start or "09:00"
     time_end = time_end or time_start
     with database.connect() as conn:
@@ -75,15 +83,34 @@ def create_task(
     text = render_created_task(task_id, action, key, payload, schedule_type, frequency, run_date, weekdays, time_start, time_end, trigger_type, draw_day_offset)
     status = cron_status()
     if not status.get("installed"):
-        text += "\n\n自动化唤醒器还没开启。回复“确认开启自动化”后，我会帮你安装每5分钟检查一次的服务器任务。"
-    result = {"ok": True, "task_id": task_id, "cron_installed": status.get("installed", False), "wechat_text": text}
+        text += "\n\n自动化唤醒器还没开启。回复“确认开启自动化”后，我会帮你安装每30分钟检查一次的服务器任务。"
+    notify_status = notification_status()
+    binding_status = notification_binding_status(str(payload.get("notification_recipient") or user_platform_id))
+    delivery_ready = delivery_complete(delivery_route)
+    if not notify_status.get("enabled"):
+        text += "\n\n主动消息推送还没开启。请先配置通知通道，确认后回复“确认开启消息推送”。"
+    elif delivery_route and not delivery_ready:
+        text += "\n\n这个自动任务的 delivery 路由不完整。创建任务时需要同时传入 channel 和 chat_id，多账号场景建议同时传入 account_id。"
+    elif not delivery_route and not binding_status.get("bound_ready"):
+        text += "\n\n这个自动任务还没有可用的通知目标。请先绑定通知目标，或在创建任务时传入当前会话的 channel/chat_id/account_id。"
+    result = {
+        "ok": True,
+        "task_id": task_id,
+        "cron_installed": status.get("installed", False),
+        "notification_enabled": notify_status.get("enabled", False),
+        "notification_recipient": payload.get("notification_recipient"),
+        "delivery_saved": delivery_ready,
+        "delivery": delivery_route,
+        "notification_binding_ready": binding_status.get("bound_ready", False),
+        "message_text": text,
+    }
     add_followup(result, "automation_created", task_id)
     if not status.get("installed"):
         add_followup(result, "cron_needed", task_id)
     return result
 
 
-def list_tasks(user_platform_id: str = "wechat_self", include_disabled: bool = False) -> dict[str, Any]:
+def list_tasks(user_platform_id: str = "self", include_disabled: bool = False) -> dict[str, Any]:
     database.init_db()
     rows = database.fetch_all(
         """
@@ -97,7 +124,7 @@ def list_tasks(user_platform_id: str = "wechat_self", include_disabled: bool = F
         (user_platform_id, user_platform_id, int(include_disabled)),
     )
     if not rows:
-        return {"ok": True, "tasks": [], "wechat_text": "当前没有自动任务。"}
+        return {"ok": True, "tasks": [], "message_text": "当前没有自动任务。"}
     lines = ["自动任务"]
     for row in rows:
         lines.append(render_task_line(row))
@@ -105,10 +132,10 @@ def list_tasks(user_platform_id: str = "wechat_self", include_disabled: bool = F
     if not status.get("installed"):
         lines.append("")
         lines.append("自动化唤醒器未开启，回复“确认开启自动化”即可安装。")
-    return {"ok": True, "tasks": rows, "cron_installed": status.get("installed", False), "wechat_text": "\n".join(lines)}
+    return {"ok": True, "tasks": rows, "cron_installed": status.get("installed", False), "message_text": "\n".join(lines)}
 
 
-def disable_tasks(user_platform_id: str = "wechat_self", task_id: int | None = None, action: str | None = None) -> dict[str, Any]:
+def disable_tasks(user_platform_id: str = "self", task_id: int | None = None, action: str | None = None) -> dict[str, Any]:
     database.init_db()
     params: list[Any] = [user_platform_id, user_platform_id]
     where = ["(u.platform_user_id = ? OR ? = '')", "t.enabled = 1"]
@@ -132,7 +159,7 @@ def disable_tasks(user_platform_id: str = "wechat_self", task_id: int | None = N
             placeholders = ",".join("?" for _ in ids)
             conn.execute(f"UPDATE scheduled_tasks SET enabled = 0, updated_at = ? WHERE id IN ({placeholders})", [now_iso(), *ids])
         conn.commit()
-    result = {"ok": True, "disabled_count": len(ids), "wechat_text": f"已停用 {len(ids)} 个自动任务。"}
+    result = {"ok": True, "disabled_count": len(ids), "message_text": f"已停用 {len(ids)} 个自动任务。"}
     add_followup(result, "cancel", f"automation:{len(ids)}")
     return result
 
@@ -234,3 +261,16 @@ def valid_time(value: str) -> bool:
 
 def normalize_run_time_mode(value: str | None) -> str:
     return "random_once_in_window" if value == "random_once_in_window" else "fixed"
+
+
+def normalize_delivery(delivery: dict[str, Any] | None) -> dict[str, str]:
+    if not isinstance(delivery, dict):
+        return {}
+    channel = str(delivery.get("channel") or delivery.get("source") or "")
+    chat_id = str(delivery.get("chat_id") or delivery.get("to") or delivery.get("target") or delivery.get("delivery_to") or "")
+    account_id = str(delivery.get("account_id") or delivery.get("accountId") or delivery.get("account") or "")
+    return {key: value for key, value in {"channel": channel, "chat_id": chat_id, "account_id": account_id}.items() if value}
+
+
+def delivery_complete(delivery: dict[str, Any]) -> bool:
+    return bool(delivery.get("channel") and delivery.get("chat_id"))
